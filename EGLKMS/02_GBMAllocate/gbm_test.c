@@ -7,6 +7,17 @@ int main(int argc, const char* argv[]){
 	struct gbm_device *gdevice = NULL;
 	struct gbm_surface *gsurface = NULL;
 	struct gbm_bo *gbo = NULL;
+	unsigned long long modifiers = 0;
+	int stride=0, primeFd=0, planeCnt=0;
+	int i = 0, j = 0;
+//	struct gbm_bo *gboImportEglImage = NULL;
+	struct gbm_bo *gboImportFd = NULL;
+	struct gbm_bo *gboImportFdModifier = NULL;
+	struct gbm_import_fd_data fdData = {0};
+	struct gbm_import_fd_modifier_data fdModData = {0};
+	int *pData = NULL;
+	int mapStride = 0;
+	void *mapData = NULL;
 
 	fd = open("/dev/dri/renderD128", O_RDWR);
 	if(fd < 0){
@@ -21,7 +32,56 @@ int main(int argc, const char* argv[]){
 		return -1;
 	}
 
-	gsurface = gbm_surface_create(gdevice, 300, 300, GBM_BO_FORMAT_ARGB8888, GBM_BO_USE_RENDRING);
+	gbm_device_is_format_supported(gdevice, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+
+	gsurface = gbm_surface_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+
+	gbo = gbm_bo_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+	if(gbo){
+		stride = gbm_bo_get_stride(gbo);
+		primeFd = gbm_bo_get_fd(gbo);
+		modifiers = gbm_bo_get_modifier(gbo);
+		planeCnt = gbm_bo_get_plane_count(gbo);
+
+		for(i=0; i<planeCnt; i++){
+			gbm_bo_get_handle_for_plane(gbo, i);
+		}
+
+		fdData.fd = primeFd;
+		fdData.width = 300;
+		fdData.height = 300;
+		fdData.stride = stride;
+		fdData.format = GBM_BO_FORMAT_XRGB8888;
+		gboImportFd = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD, fdData, GBM_BO_USE_RENDRING);
+		if(gboImportFd)
+			gbm_bo_destroy(gboImportFd);
+
+		fdModData.width = 300;
+		fdModData.height = 300;
+		fdModData.format = GBM_BO_FORMAT_XRGB8888;
+		fdModData.num_fds = 1;
+		fdModData.fds[0] = primeFd;
+		fdModData.strides[0] = stride;
+		fdModData.offsets[0] = 0;
+		fdModData.modifier = modifiers;
+		gboImportFdModifier = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD_MODIFIER, fdModData, GBM_BO_USE_RENDRING);
+		if(gboImportFdModifier)
+			gbm_bo_destroy(gboImportFdModifier);
+
+		pData = gbm_bo_map(gbo, 0, 0, 300, 300, GBM_BO_TRANSFER_READ_WRITE, &mapStride, &mapData);
+		if(pData){
+			for(i=0; i<width; i++){
+				for(j=0; j<height; j++){
+					*pData++ = 0x1234abcd;
+				}
+			}
+			gbm_bo_unmap(gbo, mapData);
+		}
+
+		gbm_bo_destroy(gbo);
+
+		//gbo = gbm_bo_create_with_modifiers(gdevice, 400, 400, GBM_BO_FORMAT_XRGB8888, modifiers, 1);
+	}
 
 	if(gsurface)
 		gbm_surface_destroy(gsurface);
