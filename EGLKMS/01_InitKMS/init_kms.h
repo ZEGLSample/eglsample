@@ -4,7 +4,7 @@
 
 struct kms
 {
-	drmModeResource *res;
+	drmModeRes *res;
 	drmModeConnector *connector;
 	drmModeEncoder *encoder;
 	drmModeModeInfo mode;
