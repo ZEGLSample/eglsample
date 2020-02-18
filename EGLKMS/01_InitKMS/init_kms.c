@@ -42,6 +42,7 @@ BOOL init_kms(int fd, struct kms* kms)
       drmModeFreeEncoder(encoder);
    }
 
+   kms->res = resources;
    kms->connector = connector;
    kms->encoder = encoder;
    kms->mode = connector->modes[0];
