@@ -16,6 +16,8 @@ int main(int argc, const char* argv[])
 
 	init_kms(fd, &kms);
 	
+	if(kms.crtc)
+		drmModeFreeCrtc(kms.crtc);		
 	if(kms.encoder)
 		drmModeFreeEncoder(kms.encoder);
 	if(kms.connector)
