@@ -11,9 +11,11 @@ static struct kms kms = {0};
 static struct gbm_device *gDevice = NULL;
 static struct gbm_surface *gSurface = NULL;
 static struct gbm_bo *gBo = NULL;
+static struct gbm_bo *gPrevBo = NULL;
 static EGLDisplay eglDisplay = NULL;
 static EGLContext eglContext = NULL;
 static EGLSurface eglSurface = NULL;
+static unsigned int prevFb = 0;
 
 static const EGLint attribs[] = {
 	EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -23,6 +25,20 @@ static const EGLint attribs[] = {
 	EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 	EGL_NONE
 };
+
+const char *vertexShaderSource = "#version 450\n"
+	"layout (location=0) in vec3 aPos;\n"
+	"void main()\n"
+	"{\n"
+	"	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+	"}\0";
+
+const char *fragmentShaderSource = "#version 450\n"
+	"out vec4 FragColor;\n"
+	"void main()\n"
+	"{\n"
+	" 	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+	"}\n\0";
 
 int setup_gbm_egl(int fd){
 	EGLConfig config = NULL;
@@ -70,11 +86,122 @@ int setup_gbm_egl(int fd){
 }
 
 void finish_gbm_egl(void){
+	if(eglSurface)
+		eglDestroySurface(eglDisplay, eglSurface);
 
+	if(gSurface)
+		gbm_surface_destroy(gSurface);
+
+	if(eglContext)
+		eglDestroyContext(eglDisplay, eglContext);
+
+	eglTerminate(eglDisplay);
+
+	if(gDevice)
+		gbm_device_destroy(gDevice);
 }
 
-void render_trangles(void){
+void render_trangles(int width, int height){
+	int vertexShader, fragmentShader;
+	int shaderProgram;
+	int success;
+	char infoLog[512] = {0};
+	float vertices[] = {
+		-0.5f, -0.5f, 0.0f, //left
+		 0.5f, -0.5f, 0.0f, //right
+		 0.0f,  0.5f, 0.0f, //top
+	}
+	unsigned int VBO, VAO;
 
+	glViewport(0, 0, (GLint)width, (GLint)height);
+
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success)
+	if(!success){
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		printf("Compile vertex shader failed: %s\n", infoLog);
+	}
+
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success)
+	if(!success){
+		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+		printf("Compile fragment shader failed: %s\n", infoLog);
+	}
+
+	shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success)
+	if(!success){
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		printf("Link shader programe failed: %s\n", infoLog);
+	}
+
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+
+	glBindVertexArray(VAO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	glUseProgram(shaderProgram);
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glFinish();
+}
+
+void swap_buffers(void){
+	unsigned int handle, pitch, fb;
+
+	eglSwapBuffers(eglDisplay, eglSurface);
+
+	gBo = gbm_surface_lock_front_buffer(gSurface);
+	handle = gbm_bo_get_handle(gBo);
+	pitch = gbm_bo_get_stride(gBo);
+
+	drmModeAddFB(fd, kms.mode.hdisplay, kms.mode.vdisplay, 24, 32, pitch, handle, &fb);
+	drmModeSetCrtc(fd, kms.crtc->crtc_id, fb, 0, 0, &kms.connector->connector_id, 1, &kms.mode);
+
+	if(gPrevBo){
+		drmModeRmFB(fd, prevFb);
+		gbm_surface_release_buffer(gSurface, gPrevBo);
+	}
+
+	gPrevBo = gBo;
+	prevFb = fb;
+}
+
+void clean_kms(void){
+	drmModeSetCrtc(fd, kms.crtc->crtc_id, kms.crtc->buffer_id, kms.crtc->x, kms.crtc->y, &kms.connector->connector_id, 1, &kms.crtc->mode);
+	drmModeFreeCrtc(kms.crtc);
+
+	drmModeFreeEncoder(kms.encoder);
+	drmModeFreeConnector(kms.connector);
+	drmModeFreeResources(kms.res);
+
+	if(gPrevBo){
+		drmModeRmFB(prevFb);
+		gbm_surface_release_buffer(gSurface, gPrevBo);
+	}
 }
 
 int main(int argc, const char *argv[]){
@@ -94,7 +221,11 @@ int main(int argc, const char *argv[]){
 		return -1;
 	}
 
-	render_trangles();
+	render_trangles(kms.mode.hdisplay, kms.mode.vdisplay);
+
+	swap_buffers();
+
+	clean_kms();
 
 	finish_gbm_egl();
 
