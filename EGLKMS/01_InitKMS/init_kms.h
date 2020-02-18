@@ -7,6 +7,7 @@ struct kms
 	drmModeRes *res;
 	drmModeConnector *connector;
 	drmModeEncoder *encoder;
+	drmModeCrtc *crtc;
 	drmModeModeInfo mode;
 	unsigned int fb_id;
 };
