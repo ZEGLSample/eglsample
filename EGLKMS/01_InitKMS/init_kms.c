@@ -41,6 +41,9 @@ BOOL init_kms(int fd, struct kms* kms)
 
       drmModeFreeEncoder(encoder);
    }
+	
+   if(encoder && encoder->crtc_id)
+	   kms->crtc = drmModeGetCrtc(fd, encoder->crtc_id);
 
    kms->res = resources;
    kms->connector = connector;
