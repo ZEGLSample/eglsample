@@ -4,8 +4,9 @@
 
 struct kms
 {
-	drmModeConnector connector;
-	drmModeEncoder encoder;
+	drmModeResource *res;
+	drmModeConnector *connector;
+	drmModeEncoder *encoder;
 	drmModeModeInfo mode;
 	unsigned int fb_id;
 };
