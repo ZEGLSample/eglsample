@@ -253,6 +253,7 @@ void clean_kms(void){
 int main(int argc, const char *argv[]){
 	if(argc != 2){
 		printf("Binary wrong use! Please follow: binary path_to_picture\n");
+		return -1;
 	}
 
 	fd = open("/dev/dri/renderD128", O_RDWR);
