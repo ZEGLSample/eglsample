@@ -40,7 +40,7 @@ const char *fragmentShaderSource = "#version 450\n"
 	" 	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 	"}\n\0";
 
-int setup_gbm_egl(int fd){
+int setup_gbm_egl(void){
 	EGLConfig config = NULL;
 	EGLint num_config = 0;
 
@@ -175,7 +175,7 @@ void swap_buffers(void){
 	eglSwapBuffers(eglDisplay, eglSurface);
 
 	gBo = gbm_surface_lock_front_buffer(gSurface);
-	handle = gbm_bo_get_handle(gBo);
+	handle = gbm_bo_get_handle(gBo).u32;
 	pitch = gbm_bo_get_stride(gBo);
 
 	drmModeAddFB(fd, kms.mode.hdisplay, kms.mode.vdisplay, 24, 32, pitch, handle, &fb);
@@ -216,7 +216,7 @@ int main(int argc, const char *argv[]){
 		return -1;
 	}
 
-	if(setup_gbm_egl(fd)){
+	if(setup_gbm_egl()){
 		printf("Init gbm and egl failed\n");
 		return -1;
 	}
