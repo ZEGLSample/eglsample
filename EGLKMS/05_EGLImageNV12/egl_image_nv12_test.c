@@ -220,9 +220,9 @@ void render_egl_image_nv12(char *path, int width, int height){
 		glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, eglImages[i]);
 
 		eglDestroyImageKHR(eglDisplay, eglImages[i]);
-		gbm_bo_destroy(gBoTest);
 	}
-
+	gbm_bo_destroy(gBoTest);
+	
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
