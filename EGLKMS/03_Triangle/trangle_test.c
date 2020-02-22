@@ -204,7 +204,7 @@ void clean_kms(void){
 	}
 }
 
-int main(int argc, const char *argv[]){
+int main(int argc, char *argv[]){
 	fd = open("/dev/dri/renderD128", O_RDWR);
 	if(fd < 0){
 		printf("Can't open fd\n");

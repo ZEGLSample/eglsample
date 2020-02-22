@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <gbm.h>
 
-int main(int argc, const char* argv[]){
+int main(int argc, char *argv[]){
 	int fd;
 	struct gbm_device *gdevice = NULL;
 	struct gbm_surface *gsurface = NULL;
@@ -10,7 +10,6 @@ int main(int argc, const char* argv[]){
 	unsigned long long modifiers = 0;
 	int stride=0, primeFd=0, planeCnt=0;
 	int i = 0, j = 0;
-//	struct gbm_bo *gboImportEglImage = NULL;
 	struct gbm_bo *gboImportFd = NULL;
 	struct gbm_bo *gboImportFdModifier = NULL;
 	struct gbm_import_fd_data fdData = {0};

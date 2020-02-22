@@ -109,7 +109,7 @@ void finish_gbm_egl(void){
 		gbm_device_destroy(gDevice);
 }
 
-void render_ext_image_texture(int width, int height, const char *path){
+void render_ext_image_texture(int width, int height, char *path){
 	int vertexShader, fragmentShader;
 	int shaderProgram;
 	int success;
@@ -250,11 +250,15 @@ void clean_kms(void){
 	}
 }
 
-int main(int argc, const char *argv[]){
+int main(int argc, char *argv[]){
+    char *extTexFilePath = NULL;
+
 	if(argc != 2){
 		printf("Binary wrong use! Please follow: binary path_to_picture\n");
 		return -1;
 	}
+
+	extTexFilePath = argv[1];
 
 	fd = open("/dev/dri/renderD128", O_RDWR);
 	if(fd < 0){
@@ -272,7 +276,7 @@ int main(int argc, const char *argv[]){
 		return -1;
 	}
 
-	render_ext_image_texture(kms.mode.hdisplay, kms.mode.vdisplay, argv[1]);
+	render_ext_image_texture(kms.mode.hdisplay, kms.mode.vdisplay, extTexFilePath);
 
 	swap_buffers();
 

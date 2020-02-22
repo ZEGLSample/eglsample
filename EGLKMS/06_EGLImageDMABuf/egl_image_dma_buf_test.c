@@ -169,6 +169,9 @@ void render_egl_image_dma_buf(void){
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, eglImage);
 
+	eglDestroyImageKHR(eglDisplay, eglImage);
+	gbm_bo_destroy(gBoTest);
+
 	glEnableClientState(GL_VERTEX_ARRAY);
 	glEnableClientState(GL_TEXTURE_COORD_ARRAY);
 
@@ -218,7 +221,7 @@ void clean_kms(void){
 	}
 }
 
-int main(int argc, const char *argv[]){
+int main(int argc, char *argv[]){
 	fd = open("/dev/dri/renderD128", O_RDWR);
 	if(fd < 0){
 		printf("Can't open fd\n");

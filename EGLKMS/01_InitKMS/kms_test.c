@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include "init_kms.h"
 
-int main(int argc, const char* argv[])
+int main(int argc, char *argv[])
 {
 	int fd;
 	struct kms kms = {0};
