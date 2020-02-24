@@ -7,14 +7,17 @@ int main(int argc, char *argv[])
 	int fd;
 	struct kms kms = {0};
 
-	fd = open("/dev/dri/renderD128", O_RDWR);
+	fd = open("/dev/dri/card0", O_RDWR);
 	if(fd < 0)
 	{
 		printf("Can't open fd\n");
 		return -1;
 	}
 
-	init_kms(fd, &kms);
+	if(init_kms(fd, &kms) == 0){
+		printf("Init kms failed\n");
+		return -1;
+	}
 	
 	if(kms.crtc)
 		drmModeFreeCrtc(kms.crtc);		

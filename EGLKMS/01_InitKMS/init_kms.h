@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <xf86drmMode.h>
 
 struct kms
@@ -12,4 +13,4 @@ struct kms
 	unsigned int fb_id;
 };
 
-extern BOOL init_kms(int fd, struct kms* kms);
+extern int init_kms(int fd, struct kms* kms);

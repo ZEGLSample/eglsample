@@ -1,6 +1,6 @@
 #include "init_kms.h"
 
-BOOL init_kms(int fd, struct kms* kms)
+int init_kms(int fd, struct kms* kms)
 {
    drmModeRes *resources;
    drmModeConnector *connector;
@@ -10,7 +10,7 @@ BOOL init_kms(int fd, struct kms* kms)
    resources = drmModeGetResources(fd);
    if (!resources) {
       fprintf(stderr, "drmModeGetResources failed\n");
-      return FALSE;
+      return 0;
    }
 
    for (i = 0; i < resources->count_connectors; i++) {
@@ -27,7 +27,7 @@ BOOL init_kms(int fd, struct kms* kms)
 
    if (i == resources->count_connectors) {
       fprintf(stderr, "No currently active connector found.\n");
-      return FALSE;
+      return 0;
    }
 
    for (i = 0; i < resources->count_encoders; i++) {
@@ -50,5 +50,5 @@ BOOL init_kms(int fd, struct kms* kms)
    kms->encoder = encoder;
    kms->mode = connector->modes[0];
 
-   return TRUE;
+   return 1;
 }
