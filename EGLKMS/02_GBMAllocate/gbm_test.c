@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <gbm.h>
 
 int main(int argc, char *argv[]){
@@ -14,11 +16,12 @@ int main(int argc, char *argv[]){
 	struct gbm_bo *gboImportFdModifier = NULL;
 	struct gbm_import_fd_data fdData = {0};
 	struct gbm_import_fd_modifier_data fdModData = {0};
+	char *pRawData = NULL;
 	int *pData = NULL;
 	int mapStride = 0;
 	void *mapData = NULL;
 
-	fd = open("/dev/dri/renderD128", O_RDWR);
+	fd = open("/dev/dri/card0", O_RDWR);
 	if(fd < 0){
 		printf("Can't open fd!\n");
 		return -1;
@@ -31,11 +34,11 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	gbm_device_is_format_supported(gdevice, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+	gbm_device_is_format_supported(gdevice, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
 
-	gsurface = gbm_surface_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+	gsurface = gbm_surface_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
 
-	gbo = gbm_bo_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDRING);
+	gbo = gbm_bo_create(gdevice, 300, 300, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_RENDERING);
 	if(gbo){
 		stride = gbm_bo_get_stride(gbo);
 		primeFd = gbm_bo_get_fd(gbo);
@@ -51,7 +54,7 @@ int main(int argc, char *argv[]){
 		fdData.height = 300;
 		fdData.stride = stride;
 		fdData.format = GBM_BO_FORMAT_XRGB8888;
-		gboImportFd = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD, fdData, GBM_BO_USE_RENDRING);
+		gboImportFd = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD, &fdData, GBM_BO_USE_RENDERING);
 		if(gboImportFd)
 			gbm_bo_destroy(gboImportFd);
 
@@ -63,16 +66,18 @@ int main(int argc, char *argv[]){
 		fdModData.strides[0] = stride;
 		fdModData.offsets[0] = 0;
 		fdModData.modifier = modifiers;
-		gboImportFdModifier = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD_MODIFIER, fdModData, GBM_BO_USE_RENDRING);
+		gboImportFdModifier = gbm_bo_import(gdevice, GBM_BO_IMPORT_FD_MODIFIER, &fdModData, GBM_BO_USE_RENDERING);
 		if(gboImportFdModifier)
 			gbm_bo_destroy(gboImportFdModifier);
 
-		pData = gbm_bo_map(gbo, 0, 0, 300, 300, GBM_BO_TRANSFER_READ_WRITE, &mapStride, &mapData);
-		if(pData){
-			for(i=0; i<width; i++){
-				for(j=0; j<height; j++){
+		pRawData = (char*)gbm_bo_map(gbo, 0, 0, 300, 300, GBM_BO_TRANSFER_READ_WRITE, &mapStride, &mapData);
+		if(pRawData){
+			pData = (int *)pRawData;
+			for(i=0; i<300; i++){
+				for(j=0; j<300; j++){
 					*pData++ = 0x1234abcd;
 				}
+				pData = (int*)(pRawData + mapStride*(i+1));
 			}
 			gbm_bo_unmap(gbo, mapData);
 		}
