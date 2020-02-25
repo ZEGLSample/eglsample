@@ -4,10 +4,11 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GL/gl.h>
+#include <GL/glext.h>
 #include "init_kms.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include "../Common/stb_image.h"
 
 static int fd = 0;
 static struct kms kms = {0};
@@ -29,7 +30,7 @@ static const EGLint attribs[] = {
 	EGL_NONE
 };
 
-const char *vertexShaderSource = "#version 450\n"
+const char *vertexShaderSource = "#version 330\n"
 	"layout (location=0) in vec3 aPos;\n"
 	"layout (location=1) in vec2 aTexCoord;\n"
 	"out vec2 texCoord;\n"
@@ -39,14 +40,13 @@ const char *vertexShaderSource = "#version 450\n"
 	" 	texCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
 	"}\0";
 
-const char *fragmentShaderSource = "#version 450n"
-	"int vec2 texCoord;\n"
-	"out vec4 FragColor;\n"
+const char *fragmentShaderSource = "#version 330\n"
+	"in vec2 texCoord;\n"
 	"uniform sampler2D texture1;\n"
 	"void main()\n"
 	"{\n"
-	" 	FragColor = texture(texture1, texCoord);\n"
-	"}\n\0";
+	" 	gl_FragColor = texture(texture1, texCoord);\n"
+	"}\0";
 
 int setup_gbm_egl(void){
 	EGLConfig config = NULL;
@@ -138,7 +138,7 @@ void render_ext_image_texture(int width, int height, char *path){
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
 	glCompileShader(vertexShader);
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success)
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	if(!success){
 		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
 		printf("Compile vertex shader failed: %s\n", infoLog);
@@ -147,7 +147,7 @@ void render_ext_image_texture(int width, int height, char *path){
 	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
 	glCompileShader(fragmentShader);
-	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success)
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
 	if(!success){
 		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
 		printf("Compile fragment shader failed: %s\n", infoLog);
@@ -157,7 +157,7 @@ void render_ext_image_texture(int width, int height, char *path){
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
 	glLinkProgram(shaderProgram);
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success)
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 	if(!success){
 		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
 		printf("Link shader programe failed: %s\n", infoLog);
@@ -191,8 +191,8 @@ void render_ext_image_texture(int width, int height, char *path){
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	imgData = stbi_load(path, &imgWidth, &imgHeight, &imgChannels, 0);
 	if(imgData){
@@ -245,7 +245,7 @@ void clean_kms(void){
 	drmModeFreeResources(kms.res);
 
 	if(gPrevBo){
-		drmModeRmFB(prevFb);
+		drmModeRmFB(fd, prevFb);
 		gbm_surface_release_buffer(gSurface, gPrevBo);
 	}
 }
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]){
 
 	extTexFilePath = argv[1];
 
-	fd = open("/dev/dri/renderD128", O_RDWR);
+	fd = open("/dev/dri/card0", O_RDWR);
 	if(fd < 0){
 		printf("Can't open fd\n");
 		return -1;
