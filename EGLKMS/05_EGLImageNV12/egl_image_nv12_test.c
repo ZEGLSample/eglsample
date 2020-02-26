@@ -36,7 +36,7 @@ static const EGLint attribs[] = {
 	EGL_NONE
 };
 
-int setup_gbm_egl(int width, int height){
+int setup_gbm_egl(void){
 	EGLConfig config = NULL;
 	EGLint num_config = 0;
 
@@ -71,7 +71,7 @@ int setup_gbm_egl(int width, int height){
 		return -1;
 	}
 
-	gSurface = gbm_surface_create(gDevice, width, height, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
+	gSurface = gbm_surface_create(gDevice, kms.mode.hdisplay, kms.mode.vdisplay, GBM_BO_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT|GBM_BO_USE_RENDERING);
 	if(!gSurface){
 		printf("GBM create surface failed\n");
 		return -1;
@@ -176,7 +176,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 		close(texFd);
 	}
 
-	glViewport(0, 0, width, height);
+	glViewport(0, 0, (GLint)kms.mode.hdisplay, (GLint)kms.mode.vdisplay);
 
 	glGenTextures(2, &textures[0]);
 
@@ -309,7 +309,7 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if(setup_gbm_egl(nv12TexWidth, nv12TexHeight)){
+	if(setup_gbm_egl()){
 		printf("Init gbm and egl failed\n");
 		return -1;
 	}

@@ -102,7 +102,7 @@ void finish_gbm_egl(void){
 		gbm_device_destroy(gDevice);
 }
 
-void render_trangles(int width, int height){
+void render_trangles(void){
 	int vertexShader, fragmentShader;
 	int shaderProgram;
 	int success;
@@ -114,7 +114,7 @@ void render_trangles(int width, int height){
 	};
 	unsigned int VBO, VAO;
 
-	glViewport(0, 0, (GLint)width, (GLint)height);
+	glViewport(0, 0, (GLint)kms.mode.hdisplay, (GLint)kms.mode.vdisplay);
 
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	render_trangles(kms.mode.hdisplay, kms.mode.vdisplay);
+	render_trangles();
 
 	swap_buffers();
 

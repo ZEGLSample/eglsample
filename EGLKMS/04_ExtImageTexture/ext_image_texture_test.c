@@ -109,7 +109,7 @@ void finish_gbm_egl(void){
 		gbm_device_destroy(gDevice);
 }
 
-void render_ext_image_texture(int width, int height, char *path){
+void render_ext_image_texture(char *path){
 	int vertexShader, fragmentShader;
 	int shaderProgram;
 	int success;
@@ -133,7 +133,7 @@ void render_ext_image_texture(int width, int height, char *path){
 
 	unsigned int VBO, VAO, EBO;
 
-	glViewport(0, 0, (GLint)width, (GLint)height);
+	glViewport(0, 0, (GLint)kms.mode.hdisplay, (GLint)kms.mode.vdisplay);
 
 	vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
@@ -251,7 +251,7 @@ void clean_kms(void){
 }
 
 int main(int argc, char *argv[]){
-    char *extTexFilePath = NULL;
+    	char *extTexFilePath = NULL;
 
 	if(argc != 2){
 		printf("Binary wrong use! Please follow: binary path_to_picture\n");
@@ -276,7 +276,7 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	render_ext_image_texture(kms.mode.hdisplay, kms.mode.vdisplay, extTexFilePath);
+	render_ext_image_texture(extTexFilePath);
 
 	swap_buffers();
 
