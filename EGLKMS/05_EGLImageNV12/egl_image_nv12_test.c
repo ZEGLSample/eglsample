@@ -1,10 +1,13 @@
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <gbm.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GL/gl.h>
+#include <GL/glext.h>
 #include <drm_fourcc.h>
+#include <string.h>
 #include "init_kms.h"
 
 static int fd = 0;
@@ -18,6 +21,11 @@ static EGLContext eglContext = NULL;
 static EGLSurface eglSurface = NULL;
 static unsigned int prevFb = 0;
 static struct gbm_bo *gBoTest = NULL;
+
+typedef EGLImageKHR (*CreateImageKHR)(EGLDisplay, EGLContext, EGLenum, EGLClientBuffer, const EGLint *);
+typedef EGLBoolean (*DestroyImageKHR)(EGLDisplay, EGLImageKHR);
+CreateImageKHR pfnCreateImageKHR = NULL;
+DestroyImageKHR pfnDestroyImageKHR = NULL;
 
 static const EGLint attribs[] = {
 	EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
@@ -41,6 +49,13 @@ int setup_gbm_egl(int width, int height){
 	eglDisplay = eglGetDisplay(gDevice);
 	if(!eglDisplay){
 		printf("EGL get display failed\n");
+		return -1;
+	}
+
+	pfnCreateImageKHR = (void*)eglGetProcAddress("eglCreateImageKHR");
+	pfnDestroyImageKHR = (void*)eglGetProcAddress("eglDestroyImageKHR");
+	if(!pfnCreateImageKHR || !pfnDestroyImageKHR){
+		printf("eglGetProcAddress CreateImageKHR or DestroyImageKHR failed\n");
 		return -1;
 	}
 
@@ -131,7 +146,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 
 	texFileSize = width * texHeight;
 	texData = (unsigned char*)mmap(0, texFileSize, PROT_READ, MAP_SHARED, texFd, 0);
-	if(texData == -1){
+	if(texData == (unsigned char*)-1){
 		printf("Map NV12 texture file failed\n");
 		if(texFd)
 			close(texFd);
@@ -152,9 +167,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 	if(pRawData){
 		pData = pRawData;
 		for(i=0; i<texHeight; i++){
-			for(j=0; j<width; j++){
-				memcpy(pData, texData, width);
-			}
+			memcpy(pData, texData, width);
 			pData = pRawData + mapStride*(i+1);
 			texData += width;
 		}
@@ -165,19 +178,19 @@ void render_egl_image_nv12(char *path, int width, int height){
 
 	glViewport(0, 0, width, height);
 
-	glGenTextures(2, &textures);
+	glGenTextures(2, &textures[0]);
 
 	glBindTexture(GL_TEXTURE_2D, textures[0]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glBindTexture(GL_TEXTURE_2D, textures[1]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParamateri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glClearColor(0.2f, 0.3f, 0.4f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -206,7 +219,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 			EGL_NONE
 		};
 
-		eglImages[i] = eglCreateImageKHR(eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, eglAttribs);
+		eglImages[i] = (*pfnCreateImageKHR)(eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, eglAttribs);
 		if(!eglImages[i]){
 			printf("Create egl image failed\n");
 			if(gBoTest){
@@ -219,7 +232,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 		glBindTexture(GL_TEXTURE_2D, textures[i]);
 		glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, eglImages[i]);
 
-		eglDestroyImageKHR(eglDisplay, eglImages[i]);
+		(*pfnDestroyImageKHR)(eglDisplay, eglImages[i]);
 	}
 	gbm_bo_destroy(gBoTest);
 	
@@ -229,7 +242,7 @@ void render_egl_image_nv12(char *path, int width, int height){
 	glVertexPointer(3, GL_FLOAT, 0, vertices);
 	glTexCoordPointer(2, GL_FLOAT, 0, texCoords);
 
-	glDrawArrays(GL_QUAD, 0, 4);
+	glDrawArrays(GL_QUADS, 0, 4);
 
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glDisableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -267,7 +280,7 @@ void clean_kms(void){
 	drmModeFreeResources(kms.res);
 
 	if(gPrevBo){
-		drmModeRmFB(prevFb);
+		drmModeRmFB(fd, prevFb);
 		gbm_surface_release_buffer(gSurface, gPrevBo);
 	}
 }
@@ -277,15 +290,15 @@ int main(int argc, char *argv[]){
 	char *nv12TexFilePath = NULL;
 
 	if(argc != 4){
-		printf("Binary wrong use. Please follow binary + nv21 texture path + width + height\n")
+		printf("Binary wrong use. Please follow binary + nv21 texture path + width + height\n");
 		return -1;
 	}
 
 	nv12TexFilePath = argv[1];
-	nv12TexWidth = (int)argv[2];
-	nv12TexHeight = (int)argv[3];
+	nv12TexWidth = atoi(argv[2]);
+	nv12TexHeight = atoi(argv[3]);
 
-	fd = open("/dev/dri/renderD128", O_RDWR);
+	fd = open("/dev/dri/card0", O_RDWR);
 	if(fd < 0){
 		printf("Can't open fd\n");
 		return -1;
@@ -296,7 +309,7 @@ int main(int argc, char *argv[]){
 		return -1;
 	}
 
-	if(setup_gbm_egl(nv12TexWidth, nv12TexHeight){
+	if(setup_gbm_egl(nv12TexWidth, nv12TexHeight)){
 		printf("Init gbm and egl failed\n");
 		return -1;
 	}
