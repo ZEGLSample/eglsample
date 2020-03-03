@@ -116,9 +116,9 @@ void render_egl_image_nv12(char *path, int width, int height){
 	int nv12PlaneCnt = 2;
 
 	unsigned char *pData=NULL, *pRawData=NULL;
-	int mapStride = 0;
+	unsigned int mapStride = 0;
 	void *mapData = NULL;
-	int i=0, j=0;
+	int i=0;
 	int texFd = 0;
 	unsigned char *texData = NULL;
 	int texFileSize = 0;

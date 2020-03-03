@@ -105,7 +105,7 @@ void render_egl_image_dma_buf(int width, int height){
 	unsigned int texture;
 	int stride=0, primeFd=0, drmFmt=0;
 	int *pData=NULL, *pRawData=NULL;
-	int mapStride = 0;
+	unsigned int mapStride = 0;
 	void *mapData = NULL;
 	int i=0, j=0;
 	EGLImageKHR eglImage = NULL;

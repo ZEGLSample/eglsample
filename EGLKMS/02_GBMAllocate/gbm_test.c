@@ -18,7 +18,7 @@ int main(int argc, char *argv[]){
 	struct gbm_import_fd_modifier_data fdModData = {0};
 	char *pRawData = NULL;
 	int *pData = NULL;
-	int mapStride = 0;
+	unsigned int mapStride = 0;
 	void *mapData = NULL;
 
 	fd = open("/dev/dri/card0", O_RDWR);
